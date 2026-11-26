@@ -2,8 +2,7 @@
 
 Projeto final de Paradigmas de Linguagens de Programação. Enunciado completo no Blackboard.
 
-Os arquivos de `src/` que vocês escrevem já existem, vazios; o `tipos.ts` e o `servidor.ts` vêm prontos. O que vai em cada um está no passo
-indicado do enunciado:
+Os cinco arquivos de implementação em `src/` estão preenchidos. `tipos.ts` e `servidor.ts` vieram prontos e foram preservados. O papel de cada arquivo está no enunciado:
 
 | Arquivo | Passo do enunciado |
 | :--- | :--- |
@@ -36,32 +35,32 @@ curl -X POST localhost:3000/reservas -H 'Content-Type: application/json' \
 
 ## Preencham (avaliado no vídeo)
 
-**Link do vídeo:** 
+**Link do vídeo:** PENDENTE — inserir o link público do vídeo do grupo antes da entrega.
+
+> Implementação local verificada com `npm test`, `npm run typecheck`, `npm start` e `npm run bench`. Este clone ainda aponta para o repositório modelo: configure o repositório público do grupo antes de enviar. O grupo precisa gravar o vídeo, preencher os nomes/RGMs e fazer commits com as próprias contas.
 
 ### Integrantes
 
 | Nome | Usuário do GitHub | Parte principal |
 | :--- | :--- | :--- |
-| | | |
+| PENDENTE — preencher com os integrantes reais | PENDENTE | PENDENTE |
 
 ### Decisões
 
-1. **Concorrência.** Como vocês garantem que duas pessoas não ficam com a mesma poltrona? Onde estava o
-   `await` perigoso?
-2. **OO.** O que o `Evento` esconde e por quê? Por que o `reservar` é tudo ou nada? Por que os erros são uma hierarquia de classes?
-3. **Funcional.** O que ganhamos com `preco.ts` puro? Como vocês testariam ele sem subir o servidor?
-4. **Se fosse em outro paradigma.** Escolham uma das partes e expliquem como ficaria em outro
-   paradigma, e se ficaria melhor ou pior.
-5. **Concorrente × paralelo.** O Node roda o JavaScript numa linha só: os pedidos de vocês são
-   concorrentes, não paralelos. O que mudaria se a venda rodasse em vários núcleos ao mesmo tempo?
+1. **Concorrência.** `bilheteria.reservar()` chama `evento.reservar(poltronas)` de forma síncrona **antes** do `await` do pagamento. Um pedido concorrente para a mesma poltrona recebe `PoltronaOcupadaErro` (409) antes de qualquer cobrança. Se o `await` viesse antes de marcar, dois pedidos poderiam cobrar pela mesma poltrona.
+2. **OO.** `Evento` guarda as poltronas vendidas no campo privado `#vendidas`; seu getter `disponivel` e `info()` mostram apenas o necessário. `reservar()` valida a lista inteira antes de marcar qualquer poltrona: um pedido inválido não vende só parte dos ingressos. A hierarquia `ErroDeNegocio` associa cada falha ao status HTTP adequado (400, 404, 409 ou 502), usado pelo `servidor.ts`.
+3. **Funcional.** `valorDoIngresso` e `aplicarTaxa` são fábricas de funções; `montarIngressos` usa `map` e a regra recebida como argumento, e `calcularTotal` usa `reduce`. Não alteram as entradas nem dependem de estado global; podem ser testadas diretamente com pessoas e valores, sem servidor nem pagamento.
+4. **Se fosse em outro paradigma.** O preço poderia ser calculado em uma classe com método `calcularTotal`, armazenando a taxa como estado. Aqui as funções puras são mais simples de combinar e testar; a classe seria útil se houvesse várias políticas de preço com ciclo de vida e estado próprio.
+5. **Concorrente × paralelo.** Enquanto o pagamento aguarda I/O, o event loop atende outros pedidos: há concorrência sem executar as linhas JavaScript simultaneamente. Em vários processos/núcleos, cada processo teria sua própria lista de poltronas; seria necessário coordenar a reserva em um banco transacional ou lock compartilhado para evitar venda duplicada. O protótipo em memória não oferece essa garantia distribuída.
+
+**Limite do protótipo:** `Promise.race` impõe prazo de espera, mas não cancela a operadora falsa. Uma cobrança que termine *depois* do timeout poderia ser aprovada após a liberação da poltrona. Em produção, seriam necessários cancelamento/estorno e conciliação idempotente com a operadora; o projeto implementa o contrato e os testes fornecidos, não uma integração financeira real.
 
 ### Resultados do bench
 
 | Cenário | Pedidos | Tempo (ms) | Vendidos | Poltrona ocupada | Falha de pagamento |
 | :--- | ---: | ---: | ---: | ---: | ---: |
-| Padrão (`main.ts`) | 200 | | | | |
+| Padrão (`main.ts`), uma execução local | 200 | 170 | 87 | 100 | 13 |
 
-O bench ocupa as poltronas do evento 1: para rodar de novo, parem o `npm start` (Ctrl+C) e subam outra
-vez.
+O bench ocupa as poltronas do evento 1: para rodar de novo, parem o `npm start` (Ctrl+C) e subam outra vez. Os resultados variam porque a operadora simulada falha aleatoriamente.
 
-O que os números mostram:
+O que os números mostram: os 100 pedidos concorrentes que disputaram poltronas já reservadas receberam 409 **antes de pagar**. Dos outros 100, 13 pagamentos falharam e liberaram as poltronas; 87 vendas foram confirmadas. A execução levou 170 ms, em vez de esperar sequencialmente 200 pagamentos de 80 ms.
