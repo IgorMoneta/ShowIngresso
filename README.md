@@ -4,7 +4,7 @@ Projeto final da disciplina de Paradigmas de Linguagens de Programação.
 
 O sistema simula a venda de ingressos com vários pedidos concorrentes, incluindo disputas pela mesma poltrona e pagamentos que podem demorar ou falhar.
 
-Vídeo da apresentação: [INSERIR LINK DO VÍDEO]
+Vídeo da apresentação: https://youtu.be/h0vHqJyzMPU
 
 ## Integrantes e contribuições
 
